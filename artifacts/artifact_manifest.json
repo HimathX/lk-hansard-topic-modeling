@@ -1,0 +1,24 @@
+{
+  "source_repo": "D:\\projects\\Hanzards",
+  "target_repo": "D:\\projects\\lk-hansard-topic-modeling",
+  "canonical_run": "final_v14",
+  "copied_artifacts": {
+    "final_v14": {
+      "path": "artifacts/final_v14",
+      "description": "Final v14 cluster assignments, macro-topic assignments, keywords, metrics, figures, and cached UMAP projections copied from the old repo."
+    },
+    "dashboard": {
+      "path": "dashboard",
+      "description": "Final static dashboard copied from dashboards/html2."
+    },
+    "evaluation_ground_truth": {
+      "path": "data/evaluation",
+      "description": "300-row manual label sample merged with label rationales, plus current-corpus match validation files."
+    }
+  },
+  "heavy_external_artifacts": {
+    "raw_pdfs": "Not copied except for tiny extraction-audit seed sample.",
+    "yearly_embeddings": "Not copied; regenerate with src/modeling/generate_bge_m3_embeddings.ipynb or provide externally.",
+    "full_extracted_markdown": "Not copied; regenerate with Gemini extraction or provide externally."
+  }
+}

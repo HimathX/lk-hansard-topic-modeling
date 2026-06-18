@@ -1,0 +1,2 @@
+model,keyword_file,n_items,n_topics,clustered_count,noise_count,clustered_pct,noise_pct,min_topic_size,median_topic_size,max_topic_size,topic_diversity,cv_coherence
+Macro-topics,D:\projects\lk-hansard-topic-modeling\artifacts\final_v14\macro_topic_keywords.json,19553,30,12632,6921,0.6460389710018923,0.3539610289981077,89,365.0,1395,0.8983333333333333,-0.36940521575571833

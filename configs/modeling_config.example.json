@@ -1,0 +1,53 @@
+{
+  "corpus": {
+    "markdown_root": "data/extracted-markdown",
+    "speeches_csv": "artifacts/final_v14/all_speakers.csv",
+    "min_words": 50,
+    "stopwords": "configs/stopwords.json"
+  },
+  "embeddings": {
+    "model_name": "BAAI/bge-m3",
+    "output_dir": "embeddings",
+    "max_seq_length": 8192,
+    "batch_size": 1,
+    "years": [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026],
+    "resume": true
+  },
+  "v14_modeling": {
+    "output_dir": "artifacts/final_v14",
+    "random_state": 42,
+    "umap": {
+      "n_neighbors": 15,
+      "n_components_for_clustering": 5,
+      "n_components_for_plotting": 2,
+      "min_dist_for_clustering": 0.0,
+      "min_dist_for_plotting": 0.1,
+      "metric": "cosine"
+    },
+    "hdbscan": {
+      "min_cluster_size": 10,
+      "min_samples": 5,
+      "metric": "euclidean",
+      "cluster_selection_method": "eom"
+    },
+    "macro_topics": {
+      "final_macro_topic_count": 30,
+      "dendrogram_distance_threshold": 0.002,
+      "linkage": "average",
+      "distance": "cosine",
+      "top_words": 100
+    },
+    "baselines": {
+      "kmeans_clusters": 336,
+      "agglomerative_clusters": 336,
+      "silhouette_sample": 5000
+    }
+  },
+  "bitopic": {
+    "output_dir": "artifacts/v13_bitopic",
+    "alpha_semantic": 0.85,
+    "beta_lexical": 0.15,
+    "vectorizer_ngram_range": [1, 2],
+    "vectorizer_min_df": 5
+  }
+}

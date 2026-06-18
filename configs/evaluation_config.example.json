@@ -1,0 +1,25 @@
+{
+  "ground_truth": "data/evaluation/ground_truth_300.csv",
+  "evaluable_ground_truth": "data/evaluation/ground_truth_evaluable_273.csv",
+  "clusters": "artifacts/final_v14/v11_cluster_assignments.csv",
+  "macro_topics": "artifacts/final_v14/macro_topic_assignments.csv",
+  "speeches": "artifacts/final_v14/all_speakers.csv",
+  "keywords": "artifacts/final_v14/macro_topic_keywords.json",
+  "keyword_section": "tfidf",
+  "top_n_keywords": 20,
+  "outputs": {
+    "directory": "artifacts/evaluation",
+    "table_iii": "artifacts/evaluation/table_iii_metrics.csv",
+    "topic_quality": "artifacts/evaluation/topic_quality_metrics.csv",
+    "summary": "artifacts/evaluation/evaluation_summary.md"
+  },
+  "extraction_audit": {
+    "audit_dir": "data/extraction_audit",
+    "results": "data/extraction_audit/extraction_audit_results.csv",
+    "metrics": [
+      "word_accuracy",
+      "speaker_boundary_f1",
+      "layout_order_similarity"
+    ]
+  }
+}

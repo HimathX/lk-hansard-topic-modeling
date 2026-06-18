@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+artifacts/evaluation/*.tmp
+embeddings/*.npy
+artifacts/final_v14/all_speakers.csv

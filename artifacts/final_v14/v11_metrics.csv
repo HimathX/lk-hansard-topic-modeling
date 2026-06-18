@@ -1,0 +1,4 @@
+Algorithm,K,Noise %,N Evaluated,Silhouette,Calinski-Harabasz,Davies-Bouldin
+HDBSCAN,336,35.4,12632,0.5741,15052.01,0.5148
+KMeans,336,0.0,19553,0.4076,13097.95,0.8745
+Agglomerative,336,0.0,19553,0.3812,12216.87,0.9088

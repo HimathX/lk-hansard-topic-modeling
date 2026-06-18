@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sri Lanka Parliamentary Debates — Topic Analysis Dashboard v14</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"></script>
+<style>
+  :root {
+    --bg:#f4f6fa; --surface:#ffffff; --surface2:#f0f2f7; --border:#dde1ec;
+    --text:#1a1d2e; --muted:#6b7494; --accent:#2563eb; --accent2:#7c3abf;
+    --green:#16a34a; --red:#dc2626; --yellow:#d97706;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.6;}
+  header{padding:36px 48px 28px;border-bottom:1px solid var(--border);background:var(--surface);}
+  header h1{font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+  header p{color:var(--muted);font-size:13px;margin-top:6px;}
+  .header-meta{display:flex;gap:32px;margin-top:18px;flex-wrap:wrap;}
+  .stat{display:flex;flex-direction:column;}
+  .stat .val{font-size:26px;font-weight:700;color:var(--accent);line-height:1;}
+  .stat .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-top:4px;}
+  main{padding:32px 48px;max-width:1600px;margin:0 auto;}
+  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .section-title span{color:var(--text);font-weight:600;}
+  section{margin-bottom:48px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px;}
+  .card-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:18px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .span-2{grid-column:span 2;}
+  .topics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+  .topic-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;}
+  .topic-card .topic-id{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
+  .topic-card .topic-name{font-size:13px;font-weight:600;color:var(--text);margin:4px 0 10px;line-height:1.4;}
+  .topic-card .topic-count{font-size:18px;font-weight:700;margin-bottom:10px;}
+  .keywords{display:flex;flex-wrap:wrap;gap:5px;}
+  .kw-tag{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--muted);}
+  .kw-tfidf{background:transparent;border-color:transparent;color:var(--accent);font-style:italic;font-size:10.5px;padding:2px 6px;}
+  .img-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .img-panel .img-title{padding:14px 20px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border);}
+  .img-panel img{width:100%;display:block;}
+  .tabs{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap;}
+  .tab-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 16px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .15s;}
+  .tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .tab-content{display:none;}
+  .tab-content.active{display:block;}
+  .filter-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .filter-chip{background:transparent;border:none;padding:3px 4px;font-size:12px;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;transition:opacity .15s;}
+  .filter-chip:hover{color:var(--text);}
+  .filter-chip.active{color:var(--text);}
+  .filter-chip.dim{opacity:0.25;text-decoration:line-through;}
+  .filter-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0;}
+  .filter-chip span.chip-label{overflow:hidden;text-overflow:ellipsis;}
+  #filterPanel{display:grid;grid-template-columns:repeat(5,1fr);gap:4px 12px;padding:8px 0 14px;background:transparent;border:none;margin-bottom:0;}
+  .filter-actions{display:flex;gap:6px;margin-bottom:8px;}
+  .metrics-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;}
+  .metrics-table th{background:var(--surface2);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.6px;padding:10px 16px;text-align:left;border-bottom:2px solid var(--border);}
+  .metrics-table td{padding:10px 16px;border-bottom:1px solid var(--border);}
+  .metrics-table tr:last-child td{border-bottom:none;}
+  .best{color:var(--green);font-weight:700;}
+  .annotation{font-size:11.5px;color:var(--muted);margin-top:10px;font-style:italic;}
+  .chart-wrap{position:relative;width:100%;}
+  .heatmap-scroll{overflow-x:auto;overflow-y:auto;max-height:920px;}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr;}.span-2{grid-column:span 1;}main,header{padding:20px;}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Sri Lanka Parliamentary Debates — Topic Analysis (v14)</h1>
+  <p>NLP cluster analysis of parliamentary speeches (2017–2026) · HDBSCAN + UMAP + 30 macro-topic aggregation from 339 micro-clusters</p>
+  <div class="header-meta">
+    <div class="stat"><span class="val">19,553</span><span class="lbl">Total Speeches</span></div>
+    <div class="stat"><span class="val">30</span><span class="lbl">Macro-Topics</span></div>
+    <div class="stat"><span class="val">339</span><span class="lbl">Micro-Clusters</span></div>
+    <div class="stat"><span class="val">10</span><span class="lbl">Years (2017–2026)</span></div>
+    <div class="stat"><span class="val">12,617</span><span class="lbl">Classified Speeches</span></div>
+    <div class="stat"><span class="val">3</span><span class="lbl">Languages</span></div>
+  </div>
+</header>
+<main>
+
+<section>
+  <p class="section-title"><span>1 — Temporal Topic Trends (2017–2026)</span></p>
+  <div class="card">
+    <p class="card-title">% of Speeches per Macro-Topic per Year</p>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(this,'tab-temporal')">Line Chart</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-stacked')">Stacked Area</button>
+      <button class="tab-btn" onclick="switchTab(this,'tab-wc')">Year Word Cloud</button>
+    </div>
+    <div id="tab-temporal" class="tab-content active">
+      <div class="chart-wrap" style="height:700px;"><canvas id="temporalLineChart"></canvas></div>
+      <p class="annotation">Key events: Easter Sunday Attacks (Apr 2019), COVID-19 (2020–21), Economic Crisis &amp; Aragalaya (2022), Elections (2019, 2024).</p>
+      <div class="filter-actions" style="margin-top:14px;">
+        <button class="tab-btn" onclick="setAllTopics(true)">Show All</button>
+        <button class="tab-btn" onclick="setAllTopics(false)">Clear All</button>
+      </div>
+      <div id="filterPanel"></div>
+    </div>
+    <div id="tab-stacked" class="tab-content">
+      <div class="chart-wrap" style="height:500px;"><canvas id="stackedAreaChart"></canvas></div>
+      <p class="annotation">Each band shows one topic's share of total speeches that year. Wider bands = more parliamentary attention.</p>
+    </div>
+    <div id="tab-wc" class="tab-content">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;" id="wcYearBtns"></div>
+      <div style="position:relative;background:#fafbfd;border:1px solid var(--border);border-radius:8px;overflow:hidden;height:420px;">
+        <canvas id="wordCloudCanvas" style="width:100%;height:100%;"></canvas>
+        <div id="wcLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);">Select a year above</div>
+      </div>
+      <p class="annotation">Word size = keyword weight in that year (topic prominence × TF-IDF distinctiveness).</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="section-title"><span>2 — Macro-Topic Speech Distribution</span></p>
+  <div class="card span-2">
+    <p class="card-title">Speech Count per Macro-Topic (sorted by volume)</p>
+    <div class="chart-wrap" style="height:840px;"><canvas id="macroBarChart"></canvas></div>
+    <p class="annotation">Speeches assigned via HDBSCAN probability-weighted centroids + KNN niche rescue. Noise points (6,936) excluded.</p>
+  </div>
+</section>
+
+<section>
+  <p class="section-title"><span>3 — Macro-Topic Keywords &amp; Labels</span></p>
+  <div class="topics-grid" id="topicsGrid"></div>
+</section>
+
+<section>
+  <p class="section-title"><span>4 — Macro-Topic Word Clouds</span></p>
+  <div class="img-panel">
+    <div class="img-title">Top Keywords per Macro-Topic — Word Cloud Grid (TF-IDF weighted)</div>
+    <img src="../../notebooks/outputs/v14_clusters/macro_topic_wordclouds.png" alt="Topic word clouds">
+  </div>
+  <p class="annotation" style="margin-top:12px;">Each panel shows the most distinctive terms for one macro-topic, sized by TF-IDF weight. Sinhala, Tamil, and English rendered natively.</p>
+</section>
+
+<section>
+  <p class="section-title"><span>5 — Semantic Geometry: UMAP Projection</span></p>
+  <div class="img-panel">
+    <div class="img-title">UMAP 2D — 19,553 Speeches Coloured by Macro-Topic</div>
+    <img src="../../notebooks/outputs/v14_clusters/macro_topic_umap_scatter.png" alt="UMAP scatter">
+  </div>
+  <p class="annotation" style="margin-top:12px;">19,553 speeches projected to 2D UMAP, coloured by macro-topic assignment. Tight clusters indicate semantically coherent topics; overlapping regions reflect thematic proximity.</p>
+</section>
+
+<section>
+  <p class="section-title"><span>6 — Hierarchical Aggregation: Micro → Macro Topics</span></p>
+  <div class="card">
+    <p class="card-title">Micro-Topics Aggregated per Macro-Topic (average linkage, cosine distance)</p>
+    <div class="chart-wrap" style="height:340px; overflow:hidden;"><canvas id="cohesionChart"></canvas></div>
+    <p class="annotation" style="margin-top:10px;">T1 (Economic Policy) has the most micro-topics (25), reflecting broad fragmentation of economic debate.</p>
+  </div>
+  <div style="margin-top:20px;">
+    <div class="img-panel">
+      <div class="img-title">Full Dendrogram — 339 Micro-Topic Centroids (crimson dashed = cut for 30 macro-groups)</div>
+      <img src="../../notebooks/outputs/v14_clusters/dendrogram_macro_topics.png" alt="Dendrogram">
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="section-title"><span>7 — Language Distribution per Macro-Topic</span></p>
+  <div class="img-panel">
+    <div class="img-title">Proportion of Sinhala / Tamil / English Speeches per Macro-Topic</div>
+    <img src="../../notebooks/outputs/v14_clusters/language_per_macro_topic.png" alt="Language distribution">
+  </div>
+  <p class="annotation" style="margin-top:12px;">T2 (Northern Province &amp; Tamil Discourse) is predominantly Tamil-medium. T13 (Governance &amp; Sovereignty) has the highest English proportion.</p>
+</section>
+
+<section>
+  <p class="section-title"><span>8 — Temporal Analysis: Spotlight &amp; Cluster Sizes</span></p>
+  <div class="grid-2">
+    <div class="img-panel">
+      <div class="img-title">Topic Temporal Spotlight — Relative Frequency Over Time</div>
+      <img src="../../notebooks/outputs/v14_clusters/temporal_topics_spotlight.png" alt="Temporal spotlight">
+    </div>
+    <div class="img-panel">
+      <div class="img-title">Temporal Spotlight — Annotated with Key Events</div>
+      <img src="../../notebooks/outputs/v14_clusters/temporal_spotlight_annotated.png" alt="Temporal spotlight annotated">
+    </div>
+  </div>
+  <div style="margin-top:20px;" class="grid-2">
+    <div class="img-panel">
+      <div class="img-title">Macro-Topic Bar Chart — Speech Volumes</div>
+      <img src="../../notebooks/outputs/v14_clusters/macro_topic_bar.png" alt="Macro topic bar">
+    </div>
+    <div class="img-panel">
+      <div class="img-title">Micro-Cluster Size Distribution (HDBSCAN)</div>
+      <img src="../../notebooks/outputs/v14_clusters/cluster_sizes.png" alt="Cluster sizes">
+    </div>
+  </div>
+</section>
+
+</main>
+<script>
+// DATA
+const TOPICS = [
+  {id:0,  name:"Parliamentary Procedures & Party Politics",      count:883,  color:"#4f8ef7", keywords:["ප්‍රශ්න","පාර්ලිමේන්තුවේ","ස්ථාවර","නියෝග","පක්ෂ","ව්‍යවස්ථා","විපක්ෂයේ","ආණ්ඩුව"], tfidf:["No-Confidence Motion","Bond Scam","Standing Orders","Speaker","Party Leader","Assets Declaration"]},
+  {id:1,  name:"Economic Policy, Debt & Energy",                count:1654, color:"#f0b429", keywords:["රුපියල්","ණය","ආර්ථික","මුදල්","බිලියන","බදු","ඩොලර්","විදුලි","තෙල්","රජය"], tfidf:["Megawatt","Renewable Energy","IMF","Fuel Prices","Budget Deficit","Economic Growth","Public Utility"]},
+  {id:2,  name:"Northern Province & Tamil Discourse",           count:334,  color:"#e05c5c", keywords:["000","இவ்வாறு","குறித்த","வேண்டிய","தேர்தல்","தபால்","சேர்ந்த","நடவடிக்கைகளை","பிரதமர்"], tfidf:["Liberation","Drug Abuse","Community","North Province","Tamil Rights","Resettlement"]},
+  {id:3,  name:"Infrastructure: Ports, Airports & Port City",   count:246,  color:"#7c5cbf", keywords:["ගුවන්","වරාය","නගරය","කොළඹ","රුපියල්","බිලියන","වරාය නගරය","ලංකා"], tfidf:["Port Terminal","SriLankan Airlines","Port City","Hambantota Port","Mattala","Civil Aviation"]},
+  {id:4,  name:"Agriculture, Tea & Commodities",                count:697,  color:"#3ec97c", keywords:["රුපියල්","තේ","පොහොර","මිල","පොල්","රජය","නිෂ්පාදනය","සීනි","ආනයනය","සහල්"], tfidf:["Organic Fertilizer Ban","Tea Industry","Kg Price","Pepper","Tea Estates","Metric Ton"]},
+  {id:5,  name:"Housing, Water & Rural Development",            count:632,  color:"#38bdf8", keywords:["මුදල්","නිවාස","රුපියල්","විශ්‍රාම","ජල","රජය","ජනතාව","ප්‍රාදේශීය","ජලය"], tfidf:["Water Scheme","Disaster Relief","Landslide","Samurdhi","Pension","Flood","Disability"]},
+  {id:6,  name:"Public Finance, COPE & Auditing",               count:241,  color:"#fb923c", keywords:["වාර්තාව","මුදල්","රජයේ","cope","ආයතන","ආංශික","ගිණුම්","රජයේ මුදල්"], tfidf:["Government Accounts","COPE Report","CIABOC","Bond Scam","Performance Audit","Public Enterprises"]},
+  {id:7,  name:"Education, Schools & Universities",             count:1282, color:"#a78bfa", keywords:["පාසල්","අධ්‍යාපන","විශ්ව","ගුරු","විද්‍යාල","උසස්","විශ්ව විද්‍යාල","විභාගය"], tfidf:["A/L Exam","Pre-school","Principal","O/L Results","School Grants","UGC","Mahapola"]},
+  {id:8,  name:"Constitutional Reform & Executive Power",        count:548,  color:"#34d399", keywords:["ආණ්ඩුක්‍රම","ව්‍යවස්ථා","ජනතාව","සංශෝධනය","දේශපාලන","ජනාධිපතිතුමා","රාජපක්ෂ"], tfidf:["19th Amendment","20th Amendment","Executive Presidency","Emergency Law","Throne Speech","All-Party Govt"]},
+  {id:9,  name:"Parliamentary Privilege & MP Conduct",          count:251,  color:"#60a5fa", keywords:["වරප්‍රසාද","රන්ජන්","රාමනායක","රන්ජන් රාමනායක","මන්ත්‍රීවරුන්","ධර්ම","නියෝග"], tfidf:["Ranjan Ramanayake","Ethics Code","MP Conduct","Parliamentary Behaviour","Arrest","Privilege"]},
+  {id:10, name:"Cooperatives, Micro-Finance & Banking",         count:232,  color:"#f472b6", keywords:["සමුපකාර","මුදල්","ණය","ශම්","මූල්‍ය","ආයතන","ක්ෂුද්‍ර","බැංකු"], tfidf:["Cooperative Societies","Micro-Finance","Deposits","Financial Institutions","Appropriation"]},
+  {id:11, name:"Healthcare, COVID-19 & Medicine",               count:576,  color:"#fbbf24", keywords:["සෞඛ්‍ය","ඖෂධ","වෛද්‍ය","රෝහල්","කොවිඩ්","රෝගීන්","බෙහෙත්","එන්නත්"], tfidf:["NMRA","Dengue","Ambulance","Ayurveda","Cancer","Drug Regulation","COVID Vaccine"]},
+  {id:12, name:"Media, Utilities Legislation & Bills",          count:260,  color:"#86efac", keywords:["පනත්","මාධ්‍ය","කෙටුම්පත","සාකච්ඡා","විදුලිබල","ජනමාධ්‍ය","ශ්‍රේෂ්ඨාධිකරණය"], tfidf:["Public Utility","CEB","Freedom of Media","Attorney General","Supreme Court","Bill Passed"]},
+  {id:13, name:"Governance, Sovereignty & Clean Sri Lanka",      count:307,  color:"#c4b5fd", keywords:["people","our","sri","lanka","sri lanka","clean","constitution","power","right"], tfidf:["Peace","Majority","Sovereignty","Clean Sri Lanka","Executive Power","Crisis","Rajapaksa"]},
+  {id:14, name:"Land Rights, Wildlife & Environment",           count:325,  color:"#fdba74", keywords:["ඉඩම්","අලි","සංරක්ෂණ","ජනතාව","අක්කර","රජය","වනජීවී","ප්‍රාදේශීය"], tfidf:["Human-Elephant Conflict","Wildlife Conservation","LRC","Forests","Hectare","Mahaweli"]},
+  {id:15, name:"Condolences & Political Commemorations",        count:288,  color:"#e879f9", keywords:["මැතිතුමා","ශෝකය","අභාවය","පාර්ලිමේන්තු","ජාතික","පළාත්","නිවන් සුව"], tfidf:["Condolence Motion","Passed Away","Chandra Siri","LSSP","Party Leader","Political Legacy"]},
+  {id:16, name:"Political Violence & Specific Incidents",       count:186,  color:"#67e8f9", keywords:["අතුකෝරළ","අමරකීර්ති","queen","ඝාතනය","majesty","elizabeth","queen elizabeth","රිසාඩ්"], tfidf:["Amarakeerthi Athukorala","Queen Elizabeth","Commonwealth","Riyaz Bathiudeen","MP Assassination"]},
+  {id:17, name:"Easter Sunday Attacks & National Security",     count:279,  color:"#4ade80", keywords:["පාස්කු","ප්‍රහාරය","මුස්ලිම්","ජනතාව","බුද්ධි","ජාතික","ආරක්ෂක","කොමිෂන්"], tfidf:["Zaharan","Easter Commission","Catholic Church","Intelligence Failure","April 21","Extremism"]},
+  {id:18, name:"Transport, Roads & Railways",                   count:390,  color:"#facc15", keywords:["මාර්ග","බස්","දුම්රිය","රථ","ප්‍රවාහන","රුපියල්","බස් රථ","අධිවේගී"], tfidf:["Lanka Transport","Bus Service","Railway","Japanese Loan","Expressway","Road Development"]},
+  {id:19, name:"Foreign Employment & Tourism",                  count:260,  color:"#fb7185", keywords:["විදේශ","සංචාරක","රැකියා","රටට","රජය","විදේශගත","සේවා","ශ්‍රමිකයන්"], tfidf:["Foreign Employment","Labour Recruitment","Tourism Industry","Overseas Workers","Remittances"]},
+  {id:20, name:"Human Rights & International Relations",        count:358,  color:"#818cf8", keywords:["මානව","හිමිකම්","මානව හිමිකම්","විදේශ","ත්‍රස්තවාදය","ජාත්‍යන්තර","ජාතීන්ගේ"], tfidf:["Palestine","Geneva HRC","UNHRC","Sovereignty","Human Rights","America","UN","Accountability"]},
+  {id:21, name:"Dairy, Livestock & Food Production",           count:218,  color:"#6ee7b7", keywords:["කිරි","පිටි","ආනයනය","කිරි පිටි","දියර කිරි","නිෂ්පාදනය","රුපියල්","හරක්"], tfidf:["Liquid Milk","Milk Powder","Cattle","Self-Sufficient","Livestock","Dairy Production"]},
+  {id:22, name:"Medical Education & SAITM Controversy",        count:223,  color:"#22d3ee", keywords:["වෛද්‍ය","රජය","අධ්‍යාපනය","ආයතනය","සෞඛ්‍ය","saitm","සයිටම්","කොතලාවල"], tfidf:["SAITM","KDU","Government Doctor","Kothalawala Defence University","Private Medical"]},
+  {id:23, name:"Elections & Electoral Reform",                  count:446,  color:"#a3e635", keywords:["මැතිවරණ","පළාත්","මැතිවරණය","පාලන","ඡන්ද","ක්‍රමය","ඡන්දය","දේශපාලන"], tfidf:["Delimitation Commission","Provincial Election","Postal Vote","Electoral System","Nomination"]},
+  {id:24, name:"Excise Tax, Gems & Revenue",                   count:204,  color:"#f97316", keywords:["බදු","මැණික්","මත්පැන්","රුපියල්","ආදායම","සුරා","සුරා බදු","ස්වර්ණාභරණ"], tfidf:["VAT","Excise Tax","Alcohol","Gems & Jewellery","Domestic Revenue","Interest Rate"]},
+  {id:25, name:"Cricket, Sports & Governance",                 count:204,  color:"#ec4899", keywords:["ක්‍රිකට්","ක්‍රීඩා","ක්‍රීඩාව","ලංකා","ලංකා ක්‍රිකට්","ආයතනය","cricket"], tfidf:["Sri Lanka Cricket Board","ICC","Corruption","Roshan Abeysinghe","Interim Committee"]},
+  {id:26, name:"Legal System, Corruption & Drug Crime",        count:302,  color:"#14b8a6", keywords:["නඩු","අධිකරණ","අපරාධ","කොමිෂන්","නීතිය","පොලිස්","දූෂණ","රජය","චෝදනා"], tfidf:["Financial Crimes","High Court","Arjuna Mahendran","Drug Trafficking","CIABOC","Bribery"]},
+  {id:27, name:"Fisheries & Coastal Economy",                  count:274,  color:"#8b5cf6", keywords:["ධීවර","යාත්‍රා","මිල","රුපියල්","මත්ස්‍ය","ඉන්ධන","මාළු","තෙල්","බහුදින"], tfidf:["Multi-Day Boats","Fishermen","Fish Industry","Kerosene","Boats","Fuel Price","Harbour"]},
+  {id:28, name:"Tea Estate Workers & Plantation Sector",       count:316,  color:"#ef4444", keywords:["වතු","රුපියල්","වැටුප","ජනතාව","වතුකරයේ","රජය","ඉඩම්","කම්කරු"], tfidf:["Workers Wages","Estate Companies","Tea Estate Workers","Thondaman","Tea Workers","Plantation Labour"]},
+  {id:29, name:"Culture, Women, Children & Heritage",          count:204,  color:"#06b6d4", keywords:["කුණු","පුරාවිද්‍යා","කසළ","කාන්තා","ළමා","ජාතික","සංස්කෘතික","ප්‍රාදේශීය"], tfidf:["Archaeological Sites","Women Empowerment","Children","Heritage","Buddhist","Hindu Temple","Waste"]},
+];
+
+const YEARS=[2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
+
+const TEMPORAL_DATA={
+   0:[11,11,10,12,11,12,11,10,8,4],
+   1:[7,8,9,10,12,22,15,10,5,2],
+   2:[14,13,12,11,11,11,10,9,6,3],
+   3:[8,9,10,12,16,18,13,9,4,1],
+   4:[8,9,10,10,18,24,11,7,2,1],
+   5:[11,11,11,11,12,12,11,10,7,4],
+   6:[16,13,12,11,11,11,10,9,5,2],
+   7:[8,9,13,16,16,14,11,9,3,1],
+   8:[5,7,13,28,24,13,6,2,1,1],
+   9:[5,7,22,30,18,9,5,3,1,0],
+  10:[15,14,13,12,11,12,11,8,3,1],
+  11:[5,6,9,24,30,14,7,4,1,0],
+  12:[9,9,10,11,12,17,16,11,4,1],
+  13:[8,9,10,11,11,13,14,13,7,4],
+  14:[10,10,11,12,12,14,13,11,5,2],
+  15:[11,11,11,11,11,11,11,11,7,5],
+  16:[12,9,10,10,20,14,12,8,4,1],
+  17:[1,2,68,14,7,4,2,1,1,0],
+  18:[10,10,12,12,12,13,12,11,5,3],
+  19:[9,9,10,10,11,20,16,11,3,1],
+  20:[10,11,12,13,14,14,12,9,4,1],
+  21:[8,9,10,10,20,26,10,5,2,0],
+  22:[26,24,18,11,8,6,4,2,1,0],
+  23:[7,8,22,23,7,6,8,16,2,1],
+  24:[10,10,11,11,12,13,12,11,7,3],
+  25:[11,12,13,11,10,11,12,11,6,3],
+  26:[14,13,13,12,11,12,12,9,3,1],
+  27:[11,11,11,11,11,12,12,11,7,3],
+  28:[9,10,12,13,14,17,12,9,3,1],
+  29:[10,10,12,12,13,14,13,10,5,1],
+};
+
+const MICROTOPICS=[12,25,17,10,12,16,8,22,12,6,8,12,8,10,12,18,6,8,14,8,10,6,6,10,8,6,19,8,12,10];
+const TOTAL=12617;
+
+const KW_COUNT={
+   0:["ප්‍රශ්න","පාර්ලිමේන්තුවේ","ස්ථාවර","නියෝග","පක්ෂ","ව්‍යවස්ථා","විපක්ෂයේ","ආණ්ඩුව","ඔබතුමාගේ","නායක"],
+   1:["රුපියල්","ණය","ආර්ථික","මුදල්","බිලියන","බදු","ඩොලර්","විදුලි","තෙල්","රජය","ජනතාව"],
+   2:["000","இவ்வாறு","குறித்த","வேண்டிய","தேர்தல்","சேர்ந்த","நடவடிக்கைகளை","பிரதமர்","சமூகம்"],
+   3:["ගුවන්","වරාය","නගරය","කොළඹ","රුපියල්","බිලියන","වරාය නගරය","ඩොලර්","ලංකා","රජය"],
+   4:["රුපියල්","තේ","පොහොර","මිල","පොල්","රජය","නිෂ්පාදනය","සීනි","ආනයනය","සහල්"],
+   5:["මුදල්","නිවාස","රුපියල්","විශ්‍රාම","ජල","රජය","ජනතාව","ප්‍රාදේශීය","ජලය","ජනතාවට"],
+   6:["වාර්තාව","මුදල්","රජයේ","cope","ආයතන","ආංශික","ගිණුම්","රජයේ මුදල්","ස්ථාවර"],
+   7:["පාසල්","අධ්‍යාපන","විශ්ව","ගුරු","විද්‍යාල","උසස්","විශ්ව විද්‍යාල","විභාගය","ජාතික"],
+   8:["ආණ්ඩුක්‍රම","ව්‍යවස්ථා","ජනතාව","සංශෝධනය","දේශපාලන","ජනාධිපතිතුමා","ජනාධිපති","රාජපක්ෂ"],
+   9:["වරප්‍රසාද","රන්ජන්","රාමනායක","රන්ජන් රාමනායක","මන්ත්‍රීවරුන්","ධර්ම","නියෝග","ප්‍රශ්නයක්"],
+  10:["සමුපකාර","මුදල්","ණය","ශම්","මූල්‍ය","ආයතන","ක්ෂුද්‍ර","රුපියල්","බැංකු","පළාත්"],
+  11:["සෞඛ්‍ය","ඖෂධ","වෛද්‍ය","රෝහල්","කොවිඩ්","රෝගීන්","බෙහෙත්","එන්නත්","ජාතික","රජය"],
+  12:["පනත්","මාධ්‍ය","කෙටුම්පත","සාකච්ඡා","විදුලිබල","ජනමාධ්‍ය","ශ්‍රේෂ්ඨාධිකරණය","සම්මත"],
+  13:["people","our","sri","lanka","sri lanka","clean","constitution","power","right","governance"],
+  14:["ඉඩම්","අලි","සංරක්ෂණ","ජනතාව","අක්කර","රජය","වනජීවී","ප්‍රාදේශීය","ජාතික"],
+  15:["මැතිතුමා","ශෝකය","අභාවය","පාර්ලිමේන්තු","ජාතික","පළාත්","ලංකා","නිවන් සුව"],
+  16:["අතුකෝරළ","අමරකීර්ති","queen","ඝාතනය","majesty","elizabeth","queen elizabeth","රිසාඩ්"],
+  17:["පාස්කු","ප්‍රහාරය","මුස්ලිම්","ජනතාව","බුද්ධි","ජාතික","ආරක්ෂක","කොමිෂන්","ආරක්ෂාව"],
+  18:["මාර්ග","බස්","දුම්රිය","රථ","ප්‍රවාහන","රුපියල්","බස් රථ","මුදල්","අධිවේගී","ලංකා"],
+  19:["විදේශ","සංචාරක","රැකියා","රටට","රජය","විදේශගත","සේවා","ශ්‍රමිකයන්","ලංකා"],
+  20:["මානව","හිමිකම්","මානව හිමිකම්","විදේශ","ත්‍රස්තවාදය","ජාත්‍යන්තර","ජාතීන්ගේ","රජය"],
+  21:["කිරි","පිටි","ආනයනය","කිරි පිටි","දියර කිරි","නිෂ්පාදනය","රුපියල්","හරක්","දේශීය"],
+  22:["වෛද්‍ය","රජය","අධ්‍යාපනය","ආයතනය","සෞඛ්‍ය","saitm","සයිටම්","කොතලාවල","විද්‍යාල"],
+  23:["මැතිවරණ","පළාත්","මැතිවරණය","පාලන","ඡන්ද","ක්‍රමය","ඡන්දය","ආණ්ඩුව","දේශපාලන"],
+  24:["බදු","මැණික්","මත්පැන්","රුපියල්","ආදායම","සුරා","සුරා බදු","ස්වර්ණාභරණ","සුරාබදු"],
+  25:["ක්‍රිකට්","ක්‍රීඩා","ක්‍රීඩාව","ලංකා","ලංකා ක්‍රිකට්","ආයතනය","ක්‍රිකට් ක්‍රීඩාව","cricket"],
+  26:["නඩු","අධිකරණ","අපරාධ","කොමිෂන්","නීතිය","පොලිස්","දූෂණ","රජය","දේශපාලන","චෝදනා"],
+  27:["ධීවර","යාත්‍රා","මිල","රුපියල්","මත්ස්‍ය","ඉන්ධන","මාළු","තෙල්","බහුදින","වරාය"],
+  28:["වතු","රුපියල්","වැටුප","ජනතාව","වතුකරයේ","රජය","ඉඩම්","කම්කරු","පෞද්ගලික"],
+  29:["කුණු","පුරාවිද්‍යා","කසළ","කාන්තා","ළමා","ජාතික","සංස්කෘතික","ප්‍රාදේශීය","රජය"],
+};
+
+const KW_TFIDF={
+   0:["No-Confidence Motion","Bond Scam","Standing Orders","Speaker","Party Leader","Assets Declaration"],
+   1:["Megawatt","Renewable Energy","IMF","Fuel Prices","Budget Deficit","Economic Growth"],
+   2:["Liberation","Drug Abuse","Community","North Province","Tamil Rights","Resettlement"],
+   3:["Port Terminal","SriLankan Airlines","Port City","Hambantota Port","Mattala","Civil Aviation"],
+   4:["Organic Fertilizer Ban","Tea Industry","Kg Price","Pepper","Tea Estates","Metric Ton"],
+   5:["Water Scheme","Disaster Relief","Landslide","Samurdhi","Pension","Flood","Disability"],
+   6:["Government Accounts","COPE Report","CIABOC","Bond Scam","Performance Audit","Finance"],
+   7:["A/L Exam","Pre-school","Principal","O/L Results","School Grants","UGC","Mahapola"],
+   8:["19th Amendment","20th Amendment","Executive Presidency","Emergency Law","Throne Speech"],
+   9:["Ranjan Ramanayake","Ethics Code","MP Conduct","Parliamentary Behaviour","Arrest","Privilege"],
+  10:["Cooperative Societies","Micro-Finance","Deposits","Financial Institutions","Appropriation"],
+  11:["NMRA","Dengue","Ambulance","Ayurveda","Cancer","Drug Regulation","COVID Vaccine"],
+  12:["Public Utility","CEB","Freedom of Media","Attorney General","Supreme Court","Bill Passed"],
+  13:["Peace","Majority","Sovereignty","Clean Sri Lanka","Crisis","Rajapaksa","Governance"],
+  14:["Human-Elephant Conflict","Wildlife Conservation","LRC","Forests","Hectare","Mahaweli"],
+  15:["Condolence Motion","Passed Away","Chandra Siri","LSSP","Party Leader","Political Legacy"],
+  16:["Amarakeerthi Athukorala","Queen Elizabeth","Commonwealth","Riyaz Bathiudeen","MP Assassination"],
+  17:["Zaharan","Easter Commission","Catholic Church","Intelligence Failure","April 21","Extremism"],
+  18:["Lanka Transport","Bus Service","Railway","Japanese Loan","Expressway","Road Development"],
+  19:["Foreign Employment","Labour Recruitment","Tourism Industry","Overseas Workers","Remittances"],
+  20:["Palestine","Geneva HRC","UNHRC","Sovereignty","Human Rights","America","UN","Accountability"],
+  21:["Liquid Milk","Milk Powder","Cattle","Self-Sufficient","Livestock","Dairy Production"],
+  22:["SAITM","KDU","Government Doctor","Kothalawala Defence University","Private Medical"],
+  23:["Delimitation Commission","Provincial Election","Postal Vote","Electoral System","Nomination"],
+  24:["VAT","Excise Tax","Alcohol","Gems & Jewellery","Domestic Revenue","Interest Rate"],
+  25:["Sri Lanka Cricket Board","ICC","Corruption","Roshan Abeysinghe","Interim Committee"],
+  26:["Financial Crimes","High Court","Arjuna Mahendran","Drug Trafficking","CIABOC","Bribery"],
+  27:["Multi-Day Boats","Fishermen","Fish Industry","Kerosene","Boats","Fuel Price","Harbour"],
+  28:["Workers Wages","Estate Companies","Tea Estate Workers","Thondaman","Plantation Labour"],
+  29:["Archaeological Sites","Women Empowerment","Children","Heritage","Buddhist","Hindu Temple"],
+};
+
+// CHART DEFAULTS
+Chart.defaults.color='#6b7494';
+Chart.defaults.borderColor='#dde1ec';
+Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
+
+// 1 — MACRO BAR CHART
+const sortedTopics=[...TOPICS].sort((a,b)=>b.count-a.count);
+new Chart(document.getElementById('macroBarChart'),{
+  type:'bar',
+  data:{
+    labels:sortedTopics.map(t=>`T${t.id}: ${t.name}`),
+    datasets:[{data:sortedTopics.map(t=>t.count),backgroundColor:sortedTopics.map(t=>t.color+'cc'),borderColor:sortedTopics.map(t=>t.color),borderWidth:1,borderRadius:4}]
+  },
+  options:{
+    indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.x.toLocaleString()} speeches (${((ctx.parsed.x/TOTAL)*100).toFixed(1)}%)`}}},
+    scales:{x:{grid:{color:'#dde1ec'},ticks:{color:'#6b7494',font:{size:11}},title:{display:true,text:'Number of Speeches',color:'#6b7494',font:{size:11}}},y:{grid:{display:false},ticks:{color:'#1a1d2e',font:{size:11}}}}
+  }
+});
+
+// 2 — TEMPORAL LINE CHART
+const temporalChart=new Chart(document.getElementById('temporalLineChart'),{
+  type:'line',
+  data:{
+    labels:YEARS.map(String),
+    datasets:TOPICS.map(t=>({label:`T${t.id}: ${t.name}`,data:TEMPORAL_DATA[t.id],borderColor:t.color,backgroundColor:t.color+'22',borderWidth:1.8,pointRadius:2,pointHoverRadius:5,tension:0.35,fill:false}))
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'nearest',intersect:true},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        callbacks:{
+          title:()=>null,
+          label:ctx=>` ${ctx.dataset.label}`,
+        },
+        displayColors:true,
+        padding:10,
+        bodyFont:{size:12,weight:'600'},
+      },
+      annotation:{annotations:{
+       
+        easter:{type:'line',xMin:'2019',xMax:'2019',borderColor:'rgba(107,116,148,0.2)',borderWidth:1,borderDash:[3,6],label:{display:false}},
+        covid:{type:'line',xMin:'2020',xMax:'2020',borderColor:'rgba(107,116,148,0.2)',borderWidth:1,borderDash:[3,6],label:{display:false}},
+        fertilizer:{type:'line',xMin:'2021',xMax:'2021',borderColor:'rgba(107,116,148,0.2)',borderWidth:1,borderDash:[3,6],label:{display:false}},
+        crisis:{type:'line',xMin:'2022',xMax:'2022',borderColor:'rgba(107,116,148,0.2)',borderWidth:1,borderDash:[3,6],label:{display:false}},
+        election2024:{type:'line',xMin:'2024',xMax:'2024',borderColor:'rgba(107,116,148,0.2)',borderWidth:1,borderDash:[3,6],label:{display:false}},
+      }}
+    },
+    scales:{
+      x:{afterFit(s){s.height+=42;},grid:{color:'#dde1ec'},ticks:{color:'#6b7494'}},
+      y:{grid:{color:'#dde1ec'},ticks:{color:'#6b7494',callback:v=>v+'%'},title:{display:true,text:'% of Topic Speeches',color:'#6b7494',font:{size:11}}}
+    }
+  },
+  plugins:[{
+    id:'eventLabels',
+    afterDraw(chart){
+      const {ctx,scales:{x},chartArea}=chart;
+      const evs=[
+        {yr:'2019',text:'Easter Attacks · Elections',row:0},
+        {yr:'2020',text:'COVID-19 · 20th Amendment',row:1},
+        {yr:'2021',text:'Fertilizer ban · Downturn',row:0},
+        {yr:'2022',text:'Econ. Crisis · Aragalaya',row:0},
+        {yr:'2024',text:'Presidential · Parl. Elections',row:0},
+      ];
+      const rowH=16, baseY=chartArea.bottom+26;
+      ctx.font='9px Segoe UI,system-ui,sans-serif';
+      ctx.fillStyle='#6b7494';
+      ctx.textAlign='center';
+      evs.forEach(ev=>{
+        const idx=YEARS.map(String).indexOf(ev.yr);
+        if(idx<0)return;
+        const xp=x.getPixelForTick(idx);
+        const yp=baseY+ev.row*rowH;
+        ctx.save();
+        ctx.strokeStyle='rgba(107,116,148,0.2)';
+        ctx.lineWidth=1;
+        ctx.setLineDash([2,3]);
+        ctx.beginPath();ctx.moveTo(xp,chartArea.bottom+2);ctx.lineTo(xp,yp-3);ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle='#6b7494';
+        ctx.fillText(ev.text,xp,yp+9);
+        ctx.restore();
+      });
+    }
+  }]
+});
+
+// TOPIC FILTER UI
+(function(){
+  const panel=document.getElementById('filterPanel');
+  TOPICS.forEach((t,i)=>{
+    const c=document.createElement('button');
+    c.className='filter-chip active';
+    c.id='chip-'+i;
+    c.innerHTML=`<span class="filter-dot" style="background:${t.color}"></span><span class="chip-label">T${t.id}: ${t.name}</span>`;
+    c.onclick=()=>toggleTopicVis(i);
+    panel.appendChild(c);
+  });
+})();
+function toggleTopicVis(idx){
+  const vis=temporalChart.isDatasetVisible(idx);
+  temporalChart.setDatasetVisibility(idx,!vis);
+  temporalChart.update();
+  const c=document.getElementById('chip-'+idx);
+  c.classList.toggle('active',!vis);
+  c.classList.toggle('dim',vis);
+}
+function setAllTopics(show){
+  TOPICS.forEach((_,i)=>{
+    temporalChart.setDatasetVisibility(i,show);
+    const c=document.getElementById('chip-'+i);
+    c.classList.toggle('active',show);
+    c.classList.toggle('dim',!show);
+  });
+  temporalChart.update();
+}
+function filterTopicChips(){
+  const q=document.getElementById('topicSearch').value.toLowerCase();
+  TOPICS.forEach((t,i)=>{
+    const c=document.getElementById('chip-'+i);
+    c.style.display=(t.name.toLowerCase().includes(q)||String(t.id)===q)?'':'none';
+  });
+}
+
+// 3 — TOPIC KEYWORD CARDS
+const grid=document.getElementById('topicsGrid');
+TOPICS.forEach(t=>{
+  const pct=((t.count/TOTAL)*100).toFixed(1);
+  const kwHtml=t.keywords.map(k=>`<span class="kw-tag">${k}</span>`).join('');
+  const tfidfHtml=t.tfidf.map(k=>`<span class="kw-tag kw-tfidf">${k}</span>`).join('');
+  grid.innerHTML+=`<div class="topic-card"><div class="topic-id">Macro-Topic ${t.id}</div><div class="topic-name">${t.name}</div><div class="topic-count" style="color:${t.color};">${t.count.toLocaleString()} <span style="font-size:13px;font-weight:400;color:var(--muted);">(${pct}%)</span></div><div class="keywords">${kwHtml}</div><div style="margin-top:6px;font-size:10px;color:var(--muted);margin-bottom:4px;">TF-IDF distinctive:</div><div class="keywords">${tfidfHtml}</div></div>`;
+});
+
+// 4 — COHESION CHART
+new Chart(document.getElementById('cohesionChart'),{
+  type:'bar',
+  data:{
+    labels:TOPICS.map(t=>`T${t.id}`),
+    datasets:[{label:'Micro-topics aggregated',data:MICROTOPICS,backgroundColor:TOPICS.map(t=>t.color+'bb'),borderColor:TOPICS.map(t=>t.color),borderWidth:1,borderRadius:4}]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>`T${ctx[0].label.slice(1)}: ${TOPICS[parseInt(ctx[0].label.slice(1))].name}`,label:ctx=>` ${ctx.parsed.y} micro-topics merged`}}},
+    scales:{x:{grid:{display:false},ticks:{color:'#1a1d2e',font:{size:10}}},y:{grid:{color:'#dde1ec'},ticks:{color:'#6b7494'},title:{display:true,text:'# Micro-Topics',color:'#6b7494',font:{size:11}}}}
+  }
+});
+
+// 6 — STACKED AREA CHART
+const stackedDatasets=[...TOPICS].reverse().map(t=>({
+  label:`T${t.id}: ${t.name}`,
+  data:YEARS.map((_,j)=>{const yt=TOPICS.reduce((s,x)=>s+TEMPORAL_DATA[x.id][j],0);return+((TEMPORAL_DATA[t.id][j]/yt)*100).toFixed(1);}),
+  borderColor:t.color,backgroundColor:t.color+'cc',borderWidth:0.5,fill:true,pointRadius:0,tension:0.35,
+}));
+new Chart(document.getElementById('stackedAreaChart'),{
+  type:'line',
+  data:{labels:YEARS.map(String),datasets:stackedDatasets},
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,color:'#6b7494',font:{size:9},usePointStyle:true}},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label.split(':')[0]}: ${ctx.parsed.y}%`}}},
+    scales:{x:{stacked:true,grid:{color:'#dde1ec'},ticks:{color:'#6b7494'}},y:{stacked:true,min:0,max:100,grid:{color:'#dde1ec'},ticks:{color:'#6b7494',callback:v=>v+'%'},title:{display:true,text:'% Share of Annual Speeches',color:'#6b7494',font:{size:11}}}}
+  }
+});
+
+// 7 — YEAR WORD CLOUD
+let wcCurrentYear=null;
+function buildWordCloudList(yearIdx){
+  const wordMap={};
+  TOPICS.forEach(t=>{
+    const pct=TEMPORAL_DATA[t.id][yearIdx];
+    if(pct<1)return;
+    const weight=pct/8;
+    (KW_COUNT[t.id]||[]).forEach((w,i)=>{const score=weight*(10-i)/10;wordMap[w]=(wordMap[w]||0)+score;});
+    (KW_TFIDF[t.id]||[]).forEach((w,i)=>{const score=weight*(6-i)/6*1.6;wordMap[w]=(wordMap[w]||0)+score;});
+  });
+  const entries=Object.entries(wordMap).filter(([,v])=>v>0.3);
+  const max=Math.max(...entries.map(([,v])=>v));
+  return entries.map(([w,v])=>[w,Math.round((v/max)*60+12)]).sort((a,b)=>b[1]-a[1]).slice(0,80);
+}
+function renderWordCloud(yearIdx){
+  const canvas=document.getElementById('wordCloudCanvas');
+  const loading=document.getElementById('wcLoading');
+  loading.style.display='none';
+  const box=canvas.parentElement.getBoundingClientRect();
+  canvas.width=box.width||900;canvas.height=box.height||420;
+  WordCloud(canvas,{
+    list:buildWordCloudList(yearIdx),gridSize:Math.round(canvas.width/60),weightFactor:canvas.width/900,
+    fontFamily:'Segoe UI,system-ui,sans-serif',
+    color:(word)=>{let bestScore=0,bestColor='#4f8ef7';TOPICS.forEach(t=>{const pct=TEMPORAL_DATA[t.id][yearIdx];const inC=(KW_COUNT[t.id]||[]).includes(word);const inT=(KW_TFIDF[t.id]||[]).includes(word);const score=pct*(inT?2:inC?1:0);if(score>bestScore){bestScore=score;bestColor=t.color;}});return bestColor;},
+    backgroundColor:'#fafbfd',rotateRatio:0.2,minSize:10,shrinkToFit:true,drawOutOfBound:false,
+  });
+}
+const wcContainer=document.getElementById('wcYearBtns');
+YEARS.forEach((y,i)=>{
+  const btn=document.createElement('button');btn.className='tab-btn';btn.textContent=y;
+  btn.onclick=()=>{wcContainer.querySelectorAll('button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderWordCloud(i);};
+  wcContainer.appendChild(btn);
+});
+wcContainer.querySelectorAll('button')[0].classList.add('active');
+renderWordCloud(0);
+
+// TAB SWITCHING
+function switchTab(btn,tabId){
+  btn.closest('.card').querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.closest('.card').querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+</script>
+</body>
+</html>

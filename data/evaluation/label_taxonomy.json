@@ -1,0 +1,75 @@
+{
+  "source": "Merged from Hanzards/src/BCubed-precision/gold_standard_eval_sample.csv and topics_reasoning.json",
+  "label_count": 16,
+  "labels": [
+    {
+      "id": 1,
+      "label": "Agriculture & Fisheries"
+    },
+    {
+      "id": 2,
+      "label": "Culture & Religion"
+    },
+    {
+      "id": 3,
+      "label": "Disaster Management"
+    },
+    {
+      "id": 4,
+      "label": "Economy & Finance"
+    },
+    {
+      "id": 5,
+      "label": "Education"
+    },
+    {
+      "id": 6,
+      "label": "Environmental Protection"
+    },
+    {
+      "id": 7,
+      "label": "Foreign Affairs"
+    },
+    {
+      "id": 8,
+      "label": "Governance & Legal Reform"
+    },
+    {
+      "id": 9,
+      "label": "Health & Social Welfare"
+    },
+    {
+      "id": 10,
+      "label": "Infrastructure & Energy"
+    },
+    {
+      "id": 11,
+      "label": "Labor & Migration"
+    },
+    {
+      "id": 12,
+      "label": "National Security & Public Order"
+    },
+    {
+      "id": 13,
+      "label": "Parliamentary Affairs"
+    },
+    {
+      "id": 14,
+      "label": "Reconciliation & Justice"
+    },
+    {
+      "id": 15,
+      "label": "Technology Innovation"
+    },
+    {
+      "id": 16,
+      "label": "Tourism Promotion"
+    }
+  ],
+  "notes": [
+    "ground_truth_300.csv preserves all 300 annotated rows.",
+    "ground_truth_evaluable_273.csv contains rows matched to current all_speakers.csv by exact normalized text.",
+    "ground_truth_exclusions.csv documents rows that could not be resolved to speech_id in the current processed corpus."
+  ]
+}

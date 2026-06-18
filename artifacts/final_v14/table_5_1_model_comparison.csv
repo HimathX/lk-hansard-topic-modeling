@@ -1,0 +1,5 @@
+Model,Architecture,K (topics),Silhouette,Coherence c_v,Noise %,Clustered %
+LDA (Baseline),Bag-of-Words + Dirichlet,—,—,—,0.0,100.0
+BERTopic (Semantic),BGE-M3 → UMAP → HDBSCAN,336,0.5741,(run §15),35.4,64.6
+BiTopic (Early Fusion),BGE-M3 + CountVec → UMAP → HDBSCAN,331,—,(run v13 §15),33.59,66.41
+Macro-Topic (Final),BERTopic → Centroid Merging → 15 Topics,15,—,(run §15),35.4,64.6
