@@ -1,7 +1,5 @@
 # LK Hansard Topic Modeling
 
-Clean copy of the final Sri Lankan Hansard topic-modeling work from `D:\projects\Hanzards`, renamed into a flatter research repo with no `hanzards/` package folder.
-
 The canonical pipeline is:
 
 1. Extract speech-level corpus from Gemini markdown.
