@@ -9,9 +9,6 @@ This file documents the recovered gold-label protocol for the 300-speech evaluat
   - `topics_reasoning_source.json`
 - Reconstructed canonical file:
   - `ground_truth_300.csv`
-- Evaluable subset against the current v14 corpus:
-  - `ground_truth_evaluable_273.csv`
-  - `ground_truth_exclusions.csv`
 
 The recovered artifacts contain one adjudicated label and one rationale per speech. They do not contain per-annotator ballots, annotator IDs, or a machine-readable inter-annotator agreement table.
 
@@ -60,4 +57,4 @@ Inter-annotator agreement cannot be recomputed from the recovered files because 
 
 ## Validation Notes
 
-The canonical evaluation file preserves all 300 annotated rows. Exact normalized text matching against `artifacts/final_v14/all_speakers.csv` resolved 273 rows to current `speech_id` values. The 27 unresolved rows are preserved in `ground_truth_300.csv` and documented in `ground_truth_exclusions.csv`.
+The canonical evaluation file preserves all 300 annotated rows. Some rows may not align cleanly to the current processed corpus in `artifacts/final_v14/all_speakers.csv`, but this repository treats `ground_truth_300.csv` as the single source of truth for the recovered gold annotations.

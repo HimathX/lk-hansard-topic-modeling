@@ -19,6 +19,17 @@ The canonical pipeline is:
 - `dashboard/`: copied final dashboard.
 - `docs/`: architecture, data contracts, reproduction notes, and paper summary.
 
+## Datasets
+
+This repo contains both the full speech corpus outputs and the smaller evaluation datasets used to validate topic quality.
+
+- `artifacts/final_v14/all_speakers.csv`: the main speech-level corpus built from extracted Hansard markdown.
+- `data/evaluation/ground_truth_300.csv`: 300-row labeled evaluation sample used for reviewer-facing clustering checks.
+- `data/evaluation/ground_truth_evaluable_273.csv`: evaluable subset after excluding rows that could not be matched cleanly to the current corpus.
+- `data/evaluation/label_taxonomy.json`: consolidated topic taxonomy and provenance for the gold labels.
+
+The evaluation dataset in `data/evaluation/` is the cleaned successor to the old materials from `D:\projects\Hanzards\src\BCubed-precision`, especially `gold_standard_eval_sample.csv` and `topics_reasoning.json`. The old local-only BCubed scripts were replaced here by portable modules under `src/evaluation/`.
+
 ## Quick Start
 
 ```powershell
