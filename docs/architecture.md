@@ -5,7 +5,7 @@ This repo is a flat research-code copy of the final Hanzards v14 workflow. There
 ## Pipeline
 
 1. `src/ingestion/hansard_download.py` downloads official Hansard PDFs into a local data tree.
-2. `data/extraction_audit/gemini_prompt.md` defines the Gemini multimodal extraction prompt used to produce markdown.
+2. `docs/extraction_audit/extraction_audit.md` documents the recovered Gemini multimodal extraction prompt used to produce markdown.
 3. `src/ingestion/build_speech_corpus.py` parses extracted markdown into a speech-level CSV, filters speeches below 50 words, normalizes speakers, and writes corpus artifacts.
 4. `src/modeling/generate_bge_m3_embeddings.ipynb` creates yearly BGE-M3 `.npy` embedding files.
 5. `src/modeling/run_macro_topic_modeling.ipynb` runs the final v14 pipeline: UMAP, HDBSCAN, KMeans and Agglomerative baselines, keyword extraction, and 30 macro-topic aggregation.

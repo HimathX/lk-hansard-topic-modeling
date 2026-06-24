@@ -1,0 +1,30 @@
+macro_topic_aggregation:
+  total_micro_topics_reported_in_paper: 336
+  noise_topic_label: -1
+  total_noise_speeches_reported_in_paper: 6921
+  total_substantive_clustered_speeches_reported_in_paper: 12632
+
+pareto_filter:
+  mass_threshold: "TODO: exact paper X not found; generated audit CSV uses 0.80"
+  retained_micro_topic_count: 167
+  retained_speech_count: 10107
+  retained_speech_mass: 0.8001
+
+centroids:
+  source: "TODO: speech embeddings / topic embeddings; audit script currently uses artifacts/final_v14/umap5.npy by default"
+  method: "mean of speech embeddings per retained micro-topic"
+  normalization: "L2"
+
+hierarchical_clustering:
+  distance_metric: "cosine"
+  linkage: "average"
+  kmin: 20
+  kmax: 40
+  merge_gap_rule: "largest adjacent merge-distance gap within [Kmin, Kmax]"
+  selected_distance_threshold_reported_in_paper: 0.002
+  selected_macro_topic_count_reported_in_paper: 30
+
+validation:
+  threshold_0_002_reproduces_30_topics: false
+  largest_gap_reproduces_30_topics: false
+  notes: "Audit run with artifacts/final_v14/v11_cluster_assignments.csv and artifacts/final_v14/umap5.npy selected K=22 by largest gap and K=46 at distance threshold 0.002. Do not claim the audit verifies K=30 until exact original centroid artifacts/parameters are recovered."
