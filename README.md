@@ -1,7 +1,5 @@
 # LK Hansard Topic Modeling
 
-![LK Hansard Topic Modeling Logo](assets/logo.png)
-
 Trilingual topic modeling workflow for Sri Lankan parliamentary Hansards, including corpus extraction, multilingual embedding generation, topic modeling, evaluation, and reviewer-facing audit artifacts.
 
 ## Project Links
