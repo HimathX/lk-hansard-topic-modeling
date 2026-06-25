@@ -7,115 +7,204 @@ This folder documents and audits how the final topic-modeling workflow reduced 3
 Reviewers asked for the macro-topic aggregation procedure to be specified algorithmically, including:
 
 - how many micro-topics were retained before macro-clustering;
-- what cumulative speech-mass threshold X% was used;
-- how the merge-distance gap was selected;
+- what retention threshold was used (and whether it was a speech-mass or size rule);
+- how the merge-distance gap relates to the chosen cut;
 - whether the 30-topic solution follows from a data-driven rule rather than an arbitrary fixed choice.
 
-## Existing Code Found
+These questions are answered in **How 336 Became 30** and **Resolved Questions**
+below.
 
-Original macro-topic aggregation code was found in `src/modeling/run_macro_topic_modeling.ipynb`.
+## Resolved: How 336 Became 30
 
-Important finding: the executable final v14 notebook code uses:
+The audit is complete and reproducible. The executable final v14 notebook
+(`src/modeling/run_macro_topic_modeling.ipynb`, cell *"MACRO-TOPIC AGGREGATION
+v2"*) reduces 336 micro-topics to 30 macro-topics in two deterministic stages:
 
-- `MIN_SPEECHES = 50` to split valid versus niche micro-topics;
-- `N_MACRO = 30` as a fixed final macro-topic count;
-- probability-weighted centroids over `emb5`;
-- `AgglomerativeClustering(metric='cosine', linkage='average')`;
-- KNN rescue for niche micro-topics using `NICHE_RESCUE_THRESH = 0.25`.
+1. **Size-based retention.** Keep micro-topics with `MIN_SPEECHES = 50` or more
+   speeches. This retains **62** of the 336 micro-topics (6,655 of the 12,632
+   substantive speeches, ≈ 52.7% of substantive mass). The remaining **274**
+   small ("niche") micro-topics are not clustered directly.
+2. **Fixed-K agglomerative clustering.** Compute a probability-weighted centroid
+   over `emb5` (UMAP-5D) for each retained micro-topic, L2-normalize, and run
+   `AgglomerativeClustering(n_clusters=30, metric='cosine', linkage='average')`.
+   `N_MACRO = 30` is a **fixed interpretability choice**, not a data-driven gap
+   result.
+3. **KNN rescue.** Each of the 274 niche micro-topics is absorbed into the
+   nearest macro-topic centroid within `NICHE_RESCUE_THRESH = 0.25` cosine
+   distance. All 274 are rescued, so every substantive speech maps to one of the
+   30 macro-topics (no standalone niche bucket remains).
 
-The notebook also contains an earlier commented block for a data-driven merge-gap search using scipy linkage over centroid cosine distances, but that block is commented out. Therefore, this audit does not claim that the final notebook itself proves the largest-gap rule unless the audit script verifies it from saved artifacts.
+What this means for the two numbers the paper reports:
+
+- **Distance threshold ≈ 0.002 is real and reproducible.** Cutting the
+  average-linkage cosine dendrogram of the 62 retained centroids at
+  `d = 0.00187` produces exactly 30 macro-topics; equivalently, cutting at
+  `d = 0.002` yields `K = 30`. The 0.002 figure is the *resulting* cut distance
+  of the fixed-30 solution, not a threshold chosen first to recover 30.
+- **The largest merge-distance gap does NOT select 30.** Within `[20, 40]` the
+  largest gap falls at `K = 24`. The notebook contains a commented-out
+  gap-search block (`MIN_K, MAX_K = 29, 50`) that was explored but **not** used
+  in the final pipeline. The camera-ready text must therefore describe 30 as a
+  fixed choice with cut distance ≈ 0.002, **not** as a gap-selected value.
+
+The reproduction is exact: rebuilding the partition from the public artifacts
+matches the committed `macro_topic_assignments.csv` with **adjusted Rand index
+1.000** (see `scripts/audit_macro_topic_aggregation.py` and
+`macro_topic_aggregation_audit.ipynb`). HDBSCAN probabilities are not stored in
+the public artifact, so the audit uses plain mean centroids; the ARI of 1.000
+confirms the probability weighting does not change the macro grouping.
 
 ## Reproducible Audit Command
 
-Run this from the repository root:
+Run this from the repository root. Defaults already match the paper, so the bare
+command reproduces every table, figure, and the ARI check:
 
-```powershell
-python scripts\audit_macro_topic_aggregation.py --speech-topic-assignments artifacts\final_v14\v11_cluster_assignments.csv --speech-embeddings artifacts\final_v14\umap5.npy --output-dir docs\macro_topic_aggregation --mass-threshold 0.80 --kmin 20 --kmax 40 --distance-threshold 0.002
+```bash
+python scripts/audit_macro_topic_aggregation.py --figures
 ```
 
-This command recomputes reviewer-facing audit tables using saved HDBSCAN assignments and saved UMAP-5D embeddings. The default `--mass-threshold 0.80` is an audit parameter, not a verified value from the original paper, unless the authors confirm it.
+Explicit form (cross-platform):
 
-## Current Known Values
+```bash
+python scripts/audit_macro_topic_aggregation.py \
+    --speech-topic-assignments artifacts/final_v14/v11_cluster_assignments.csv \
+    --speech-embeddings artifacts/final_v14/umap5.npy \
+    --macro-assignments artifacts/final_v14/macro_topic_assignments.csv \
+    --output-dir docs/macro_topic_aggregation \
+    --min-speeches 50 --n-macro 30 --niche-rescue-thresh 0.25 \
+    --kmin 20 --kmax 40 --distance-threshold 0.002 --figures
+```
+
+The retention rule is `--min-speeches 50` (the notebook's rule). A
+`--mass-threshold` flag is still available for an alternative Pareto-style view,
+but it is **not** the method used in the paper. The notebook
+`macro_topic_aggregation_audit.ipynb` performs the same reproduction
+step-by-step for reviewers.
+
+## Current Known Values (verified)
 
 | Field | Value |
 | --- | --- |
-| Total micro-topics reported in paper | 336 |
+| Total micro-topics (excl. noise) | 336 |
 | Noise topic label | -1 |
-| Noise speeches reported in paper | 6,921 |
-| Substantive clustered speeches reported in paper | 12,632 |
-| Paper-reported macro-topic count | 30 |
-| Paper-reported distance threshold | 0.002 |
-| Original executable notebook code found | yes |
-| Original final code uses fixed `N_MACRO = 30` | yes |
-| Original final code stores exact Pareto X% | TODO: not found |
-| Audit mass threshold used for generated CSVs | 0.80 |
-| Retained micro-topic count at audit threshold | 167 |
-| Retained speech count at audit threshold | 10,107 |
-| Retained cumulative speech mass at audit threshold | 0.8001 |
-| Largest-gap rule result for K in [20, 40] | K = 22 |
-| Distance threshold 0.002 result | K = 46 |
-| Largest-gap rule verified to reproduce 30 | false for this audit run |
-| Threshold 0.002 verified to reproduce 30 | false for this audit run |
+| Noise speeches | 6,921 |
+| Substantive clustered speeches | 12,632 |
+| Retention rule | speech count ≥ 50 |
+| Retained ("valid") micro-topics | 62 |
+| Retained speeches | 6,655 (52.7% of substantive mass) |
+| Niche micro-topics (< 50 speeches) | 274 |
+| Niche speeches | 5,977 |
+| Macro-topic count `N_MACRO` | 30 (fixed) |
+| Centroids | probability-weighted over `emb5`; audit uses mean (ARI 1.000) |
+| Linkage / metric | average / cosine |
+| Cut distance producing K = 30 | 0.00187 |
+| K at distance threshold 0.002 | **30** ✓ |
+| Largest-gap rule result for K in [20, 40] | K = 24 (diagnostic only) |
+| KNN niche rescue threshold | 0.25 cosine |
+| Niche micro-topics rescued | 274 of 274 (0 left as niche) |
+| Reproduced partition vs committed output | **ARI = 1.000** (exact match) |
 
-Important: the generated audit run does **not** verify the manuscript claim that the largest merge-distance gap or threshold 0.002 yields Kmacro = 30. This may be because the saved artifact is UMAP-5D rather than the original centroid space, because the final notebook used a fixed `N_MACRO = 30` path, or because the paper text describes an earlier/commented method. The camera-ready text should not claim data-driven recovery of 30 until the exact artifact path and parameters are confirmed.
+The audit **verifies** that cutting at the paper's distance threshold 0.002
+yields exactly 30 macro-topics and that the reproduced partition is identical to
+the committed `macro_topic_assignments.csv`. It also documents the honest caveat
+that the largest merge-distance gap rule alone would select K = 24, so 30 is
+reported as a fixed interpretability choice with a resulting cut distance of
+≈ 0.002.
 
 ## Macro-Topic Aggregation Algorithm
 
 Input:
 
-- micro-topic assignments for all speeches;
-- speech embeddings or topic centroids;
-- micro-topic speech counts;
-- cumulative mass threshold X;
-- candidate macro-topic range `[Kmin, Kmax]`.
+- micro-topic assignments for all speeches (`hdbscan_cluster`);
+- speech embeddings (`emb5`, UMAP-5D) and, when available, HDBSCAN membership
+  probabilities;
+- the size cutoff `MIN_SPEECHES` and the fixed macro count `N_MACRO`;
+- the niche rescue cosine threshold `NICHE_RESCUE_THRESH`.
 
-Algorithm:
+Algorithm (as implemented in the final notebook):
 
 1. Remove the noise topic labelled `-1`.
-2. Count the number of speeches assigned to each remaining micro-topic.
-3. Rank micro-topics in descending order by speech count.
-4. Compute cumulative speech mass over this ranked list.
-5. Retain the smallest prefix of ranked micro-topics whose cumulative speech mass is at least X.
-6. Compute one centroid for each retained micro-topic by averaging embeddings of speeches assigned to that micro-topic.
-7. L2-normalize the retained micro-topic centroids.
-8. Apply average-linkage hierarchical clustering using cosine distance.
-9. Compute the merge-distance sequence from the hierarchy.
-10. For each candidate K in `[Kmin, Kmax]`, compute the adjacent merge-distance gap associated with cutting the hierarchy at K clusters.
-11. Select the K with the largest merge-distance gap inside the candidate range.
-12. Separately compute the K implied by distance threshold `0.002`.
-13. Assign each retained micro-topic to one macro-topic.
-14. Assign macro-topic labels manually using top keywords and representative speeches.
+2. Count the speeches assigned to each remaining micro-topic.
+3. **Retain** micro-topics with at least `MIN_SPEECHES` (= 50) speeches; the
+   rest are "niche".
+4. For each retained micro-topic, compute a probability-weighted centroid of its
+   speech embeddings (falling back to the mean when probabilities are absent or
+   sum to zero).
+5. L2-normalize the retained centroids.
+6. Apply average-linkage agglomerative clustering with cosine distance and cut
+   at a **fixed** `N_MACRO` (= 30) clusters.
+7. For each niche micro-topic, compute its centroid and assign it to the nearest
+   macro-topic centroid if within `NICHE_RESCUE_THRESH` cosine distance;
+   otherwise leave it as a standalone niche bucket.
+8. Assign macro-topic labels post hoc using top keywords and representative
+   speeches (labels are not used during clustering).
 
-The macro-topic labels are interpretive labels assigned after clustering; they are not used during clustering.
+Reviewer diagnostics (steps 9–11 below are reported but do **not** drive the
+final K): compute the merge-distance sequence, the adjacent merge-gap for each
+candidate K in `[Kmin, Kmax]`, the largest-gap K, and the K implied by the
+distance threshold 0.002.
 
-## Generated Tables
+## Generated Tables and Figures
 
-The audit script writes:
+The audit script (`--figures`) writes, into this folder:
 
-- `retained_micro_topics.csv`: micro-topic counts, cumulative mass, and retained flag.
-- `merge_gap_candidates.csv`: candidate K values, cut distances, adjacent gaps, largest-gap selection, and threshold selection.
-- `macro_topic_mapping.csv`: computed mapping from retained micro-topic IDs to audit macro-topic IDs when embeddings are available.
-- `macro_topic_mapping_template.csv`: fill-in template for manually curated/reporting labels if the computed mapping is not the final paper mapping.
+- `retained_micro_topics.csv`: per micro-topic speech count, cumulative mass, and
+  retained flag (62 of 336 retained).
+- `merge_gap_candidates.csv`: candidate K, cut distance, next merge distance,
+  adjacent gap, largest-gap flag, paper-`N_MACRO` flag, and threshold flag.
+- `macro_topic_mapping.csv`: the 62 retained micro-topics mapped to their
+  macro-topic, with macro size, the committed macro label, top keywords, and a
+  representative speech id.
+- `macro_topics_summary.csv`: the 30 macro-topics with speech counts and top
+  TF-IDF keywords — a camera-ready table.
+- `macro_topic_mapping_template.csv`: a 30-row curation sheet with an empty
+  `curated_human_label` column for human-readable topic names.
+- `dendrogram_with_cut.png`: average-linkage cosine dendrogram of the 62 retained
+  centroids with the K = 30 cut line (full tree + zoom to the cut region).
+- `merge_gap_vs_k.png`: cut distance and adjacent merge-gap across candidate K,
+  marking the 0.002 threshold and the paper's K = 30.
+- `parameters.yaml`: machine-readable, fully populated audit parameters.
 
 ## Machine-Readable Parameters
 
-See `parameters.yaml`. Fields that are not recoverable from the repository are marked `TODO`.
+See `parameters.yaml`. All fields are populated from the public artifacts; there
+are no remaining `TODO` values.
 
-## Camera-Ready Snippet
+## Camera-Ready Snippet (verified — ready to paste)
 
-Do not paste either version into the camera-ready paper until the TODOs above are resolved. The current saved-artifact audit does not reproduce Kmacro = 30 from the largest-gap rule or from distance threshold 0.002.
+> The 336 micro-topics from HDBSCAN (excluding 6,921 noise speeches) were
+> aggregated into macro-topics in two deterministic stages. First, the 62
+> micro-topics with at least 50 speeches (6,655 substantive speeches) were
+> retained; for each we computed a probability-weighted centroid over the
+> BGE-M3/UMAP-5D embedding and L2-normalized it. We then applied average-linkage
+> agglomerative clustering with cosine distance and cut the hierarchy at a fixed
+> K = 30 macro-topics, chosen for interpretability; the corresponding cut
+> distance is ≈ 0.002. The remaining 274 small micro-topics were each absorbed
+> into the nearest macro-topic by a cosine-distance KNN rescue (threshold 0.25),
+> so all 12,632 substantive speeches map to one of the 30 macro-topics.
+> Macro-topic labels were assigned post hoc from top keywords and representative
+> speeches and were not used during clustering. The reported partition is
+> reproducible from the released artifacts (adjusted Rand index 1.000 against the
+> committed assignments).
 
-### Version A: With exact computed values
+Phrasing to avoid: do **not** write that the largest merge-distance gap selected
+30. The gap rule selects K = 24 on this data; 30 is a fixed choice whose cut
+distance happens to be ≈ 0.002.
 
-The 336 BERTopic micro-topics were aggregated using a deterministic two-stage procedure. First, the noise topic (-1) was removed, leaving 12,632 speeches in substantive micro-topic clusters. Micro-topics were ranked by speech count, and the smallest prefix whose cumulative mass reached X_PERCENT of clustered speeches was retained, yielding RETAINED_N micro-topics. For each retained micro-topic, we computed a centroid by averaging the BGE-M3 embeddings of its assigned speeches and L2-normalizing the resulting vector. We then applied average-linkage hierarchical clustering using cosine distance over the retained centroids. To avoid fixing the number of macro-topics arbitrarily, we evaluated candidate cuts within [KMIN, KMAX] and selected the cut corresponding to the largest adjacent merge-distance gap. This produced a cut distance of 0.002 and yielded Kmacro = 30. Macro-topic labels were assigned post hoc from top keywords and representative speeches and were not used during clustering.
+## Resolved Questions
 
-### Version B: If exact retained count cannot be recovered before camera-ready
+The four open questions from the original audit are now answered:
 
-The 336 BERTopic micro-topics were aggregated using a deterministic two-stage procedure. First, the noise topic (-1) was removed and only substantive micro-topic clusters were considered. Micro-topics were ranked by speech count, and a Pareto-style cumulative-mass filter retained the dominant prefix of topics for macro-level interpretation. For each retained micro-topic, a centroid was computed from the embeddings of its assigned speeches. These centroids were then clustered using average-linkage hierarchical clustering with cosine distance. Candidate cuts were inspected within a predefined interpretable range [Kmin, Kmax], and the final cut was selected using the largest adjacent merge-distance gap, yielding a distance threshold of 0.002 and Kmacro = 30. Macro-topic labels were assigned only after clustering using top keywords and representative speeches.
-
-## TODOs
-
-- TODO: confirm the exact cumulative speech-mass threshold X used in the paper.
-- TODO: confirm whether the final paper should describe the executable notebook behavior (`MIN_SPEECHES = 50`, fixed `N_MACRO = 30`, KNN rescue) or the commented data-driven gap-search behavior.
-- TODO: confirm whether saved UMAP-5D centroids are acceptable for the audit or whether original BGE-M3 speech embeddings must be restored.
-- TODO: recover the exact original centroid artifact/parameter path if the authors want to support the claim that the largest-gap rule produced K=30.
+- **Cumulative speech-mass threshold X.** Not applicable. The paper's retention
+  rule is a size cutoff (`MIN_SPEECHES = 50` → 62 retained micro-topics, 52.7% of
+  substantive mass), not a cumulative-mass prefix. The earlier audit's 0.80
+  threshold (167 topics) did not match the code.
+- **Which method to describe.** Describe the executable notebook behavior:
+  `MIN_SPEECHES = 50`, fixed `N_MACRO = 30`, KNN niche rescue. The commented-out
+  gap-search block was exploratory and unused.
+- **Are UMAP-5D centroids acceptable.** Yes. `emb5` is exactly the embedding the
+  notebook clusters on, and the audit reproduces the committed partition exactly
+  (ARI = 1.000).
+- **Recovering the largest-gap = 30 claim.** It cannot be recovered because it is
+  not what happened; the gap rule gives K = 24. The defensible, verified claim is
+  the fixed-K-30 / cut-distance-≈-0.002 framing above.
