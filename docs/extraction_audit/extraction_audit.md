@@ -355,16 +355,10 @@ Simple metrics:
 - Language Preservation Accuracy = speeches with no translation, transliteration, or major script corruption / checked speeches
 - Procedural Noise Error Rate = speeches incorrectly containing procedural-only content / checked speeches
 
-The evaluator reports "Procedural Noise Removal Accuracy" as the share of checked rows where `procedural_noise_removed=true`.
+
 
 Run:
 
 ```powershell
 python scripts\evaluate_extraction_audit.py docs\extraction_audit\extraction_audit_manual_benchmark_template.csv
 ```
-
-## Camera-Ready Paper Snippet
-
-The Hansard extraction stage was implemented as a multimodal document extraction pipeline rather than a purely non-OCR method. Gemini was used as a document understanding component for layout-aware text recovery, speaker-turn segmentation, procedural-noise filtering, and preservation of Sinhala, Tamil, English, and code-mixed speech content. No translation, transliteration, or language normalization was applied. For auditability, we release the extraction prompt, recovered model/input metadata, post-processing steps, representative success and failure review targets, and a manually checked extraction benchmark seed in the accompanying repository.
-
-On a manually checked starter sample of 4 rendered PDF pages / 4 extracted speeches, we evaluated speaker attribution, speech-boundary segmentation, layout-order preservation, language preservation, and procedural-noise removal. No benchmarked errors were observed in this small seed sample; the highest-risk categories still recommended for expansion are dual-column ordering, speaker attribution on dense spreads, and procedural-text carry-over. These results are reported to contextualize downstream topic-modeling quality rather than to claim perfect extraction.
